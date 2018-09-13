@@ -113,3 +113,17 @@ func HasChildren(vc *object.VirtualApp) (bool, error) {
 	}
 	return false, nil
 }
+
+// EntityFromKey locates a VAppEntityConfigInfo within a vApp container by the
+// string value of its key.
+func EntityFromKey(key string, c *mo.VirtualApp) *types.VAppEntityConfigInfo {
+	log.Printf("[DEBUG] Locating VApp entity with key %s", key)
+	for _, e := range c.VAppConfig.EntityConfig {
+		log.Printf("[DEBUG] BILLLLLLLLLLLLLLLLLLLLLLLL - %v, %v", e.Key.Value, key)
+		if e.Key.Value == key {
+			log.Printf("[DEBUG] vApp entity found: %s", key)
+			return &e
+		}
+	}
+	return nil
+}
