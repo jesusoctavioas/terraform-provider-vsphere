@@ -7,7 +7,6 @@ import (
 
 	"github.com/hashicorp/terraform/helper/schema"
 	"github.com/terraform-providers/terraform-provider-vsphere/vsphere/internal/helper/customattribute"
-	"github.com/terraform-providers/terraform-provider-vsphere/vsphere/internal/helper/resourcepool"
 	"github.com/terraform-providers/terraform-provider-vsphere/vsphere/internal/helper/structure"
 	"github.com/terraform-providers/terraform-provider-vsphere/vsphere/internal/helper/vappcontainer"
 	"github.com/terraform-providers/terraform-provider-vsphere/vsphere/internal/helper/viapi"
@@ -130,7 +129,7 @@ func resourceVSphereVAppEntityCreate(d *schema.ResourceData, meta interface{}) e
 	}
 
 	log.Printf("[DEBUG] %s: Create finished successfully", resourceVSphereVAppEntityIDString(d))
-	return nil
+	return resourceVSphereVAppEntityRead(d, meta)
 }
 
 func resourceVSphereVAppEntityRead(d *schema.ResourceData, meta interface{}) error {
@@ -158,38 +157,54 @@ func resourceVSphereVAppEntityRead(d *schema.ResourceData, meta interface{}) err
 }
 
 func resourceVSphereVAppEntityUpdate(d *schema.ResourceData, meta interface{}) error {
-	log.Printf("[DEBUG] %s: Beginning update", resourceVSphereVAppContainerIDString(d))
+	log.Printf("[DEBUG] %s: Beginning update", resourceVSphereVAppEntityIDString(d))
 	client, err := resourceVSphereVAppContainerClient(meta)
 	if err != nil {
 		return err
 	}
-	va, err := vappcontainer.FromID(client, d.Id())
+	//entity, err := resourceVSphereVAppEntityFind(client, d)
 	if err != nil {
 		return err
 	}
-	if err = resourceVSphereVAppContainerApplyTags(d, meta, va); err != nil {
+	va, err := vappcontainer.FromID(client, d.Get("container_id").(string))
+	if err != nil {
 		return err
 	}
-	op, np := d.GetChange("parent_resource_pool_id")
-	if op != np {
-		log.Printf("[DEBUG] %s: Parent resource pool has changed. Moving from %s, to %s", resourceVSphereVAppContainerIDString(d), op, np)
-		p, err := vappcontainer.FromID(client, np.(string))
-		if err != nil {
-			return err
-		}
-		err = resourcepool.MoveIntoResourcePool(p.ResourcePool, va.Reference())
-		if err != nil {
-			return err
-		}
-		log.Printf("[DEBUG] %s: Move finished successfully", resourceVSphereVAppContainerIDString(d))
+	mo, err := vappcontainer.Properties(va)
+	if err != nil {
+		return err
+	}
+	vm, err := virtualmachine.FromUUID(client, d.Get("target_id").(string))
+	if err != nil {
+		return err
+	}
+	vmp, err := virtualmachine.Properties(vm)
+	if err != nil {
+		return err
 	}
 
-	vaSpec := types.VAppConfigSpec{}
-	err = vappcontainer.Update(va, vaSpec)
-	if err != nil {
+	// BILL ADD UPDATE LOGIC
+
+	mor := vmp.Reference()
+	entityConfig := types.VAppEntityConfigInfo{
+		Key:             &mor,
+		StartOrder:      int32(d.Get("start_order").(int)),
+		StartAction:     d.Get("start_action").(string),
+		StartDelay:      int32(d.Get("start_delay").(int)),
+		StopAction:      d.Get("stop_action").(string),
+		StopDelay:       int32(d.Get("stop_delay").(int)),
+		WaitingForGuest: structure.GetBoolPtr(d, "wait_for_guest"),
+	}
+	mo.VAppConfig.EntityConfig = []types.VAppEntityConfigInfo{entityConfig}
+	updateSpec := types.VAppConfigSpec{
+		EntityConfig: mo.VAppConfig.EntityConfig,
+	}
+
+	if err = vappcontainer.Update(va, updateSpec); err != nil {
 		return err
 	}
-	log.Printf("[DEBUG] %s: Update finished successfully", resourceVSphereVAppContainerIDString(d))
+
+	log.Printf("[DEBUG] %s: Update finished successfully", resourceVSphereVAppEntityIDString(d))
 	return nil
 }
 
