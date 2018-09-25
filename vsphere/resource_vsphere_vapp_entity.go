@@ -138,7 +138,7 @@ func resourceVSphereVAppEntityRead(d *schema.ResourceData, meta interface{}) err
 	if err != nil {
 		return err
 	}
-	entity, err := resourceVSphereVAppEntityFind(client, d)
+	entity, err := resourceVSphereVAppEntityFind(client, d.Id())
 	d.Set("target_id", d.Get("target_id"))
 	if err != nil {
 		return err
@@ -252,8 +252,8 @@ func resourceVSphereVAppEntityDelete(d *schema.ResourceData, meta interface{}) e
 	return nil
 }
 
-func resourceVSphereVAppEntityFind(client *govmomi.Client, d *schema.ResourceData) (*types.VAppEntityConfigInfo, error) {
-	parts := strings.SplitN(d.Id(), ":", 2)
+func resourceVSphereVAppEntityFind(client *govmomi.Client, id string) (*types.VAppEntityConfigInfo, error) {
+	parts := strings.SplitN(id, ":", 2)
 	cid := parts[0]
 	eid := parts[1]
 	container, err := vappcontainer.FromID(client, cid)
