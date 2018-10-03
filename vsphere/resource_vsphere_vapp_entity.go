@@ -40,6 +40,7 @@ func resourceVSphereVAppEntity() *schema.Resource {
 		"start_delay": {
 			Type:        schema.TypeInt,
 			Description: "Delay in seconds before continuing with the next entity in the order of entities to be started.",
+			Default:     120,
 			Optional:    true,
 		},
 		"stop_action": {
@@ -51,6 +52,7 @@ func resourceVSphereVAppEntity() *schema.Resource {
 		"stop_delay": {
 			Type:        schema.TypeInt,
 			Description: "Delay in seconds before continuing with the next entity in the order of entities to be stopped.",
+			Default:     120,
 			Optional:    true,
 		},
 		"start_order": {
